@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sky Adventure: Enhanced</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
+            touch-action: manipulation;
+            font-family: 'Arial', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background-color: transparent;
+        }
+        #gameUI {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+            user-select: none;
+            z-index: 5;
+        }
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+        #startScreen h1 {
+            font-size: 42px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            color: #FFD700;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 22px;
+            background: linear-gradient(to bottom, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #startButton:active {
+            transform: scale(0.95);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+        #gameOverScreen h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            color: #FF5252;
+        }
+        #restartButton {
+            padding: 15px 30px;
+            font-size: 22px;
+            background: linear-gradient(to bottom, #FF5252, #D32F2F);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #restartButton:active {
+            transform: scale(0.95);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+        }
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 30px;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+        .control-btn {
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        @media (max-width: 600px) {
+            .control-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 28px;
+            }
+            #gameUI {
+                font-size: 20px;
+            }
+        }
+        #windIndicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameUI">
+        Score: <span id="score">0</span> | Altitude: <span id="altitude">0</span>m
+    </div>
+    <div id="windIndicator">
+        Wind: <span id="windSpeed">0</span> m/s
+    </div>
+    
+    <div id="startScreen">
+        <h1>Sky Adventure: Enhanced</h1>
+        <p>Experience realistic bird flight physics!</p>
+        <button id="startButton">Start Flight</button>
+    </div>
+    
+    <div id="gameOverScreen">
+        <h1>Flight Ended!</h1>
+        <p>Distance: <span id="finalScore">0</span> meters</p>
+        <p>Max Altitude: <span id="finalAltitude">0</span>m</p>
+        <button id="restartButton">Fly Again</button>
+    </div>
+    
+    <div class="controls">
+        <div class="control-btn" id="leftBtn">←</div>
+        <div class="control-btn" id="rightBtn">→</div>
+    </div>
+
+    <script>
+        // Enhanced Game Constants
+        const GAME_WIDTH = window.innerWidth;
+        const GAME_HEIGHT = window.innerHeight;
+        const PLAYER_SIZE = 50;
+        const STAR_SIZE = 24;
+        const CLOUD_WIDTH = 80;
+        const CLOUD_HEIGHT = 50;
+        const GRAVITY = 0.4;
+        const BASE_LIFT = -0.6;
+        const FLAP_STRENGTH = -12;
+        const MAX_FLAP_ANGLE = Math.PI/4;
+        const WING_INERTIA = 0.05;
+        const PLAYER_SPEED = 6;
+        const STAR_SPAWN_RATE = 90;
+        const CLOUD_SPAWN_RATE = 120;
+        const WIND_CHANGE_RATE = 300;
+        const MAX_WIND = 3;
+        
+        // Game variables
+        let canvas, ctx;
+        let player = {
+            x: GAME_WIDTH / 4,
+            y: GAME_HEIGHT / 2,
+            width: PLAYER_SIZE,
+            height: PLAYER_SIZE,
+            velocityY: 0,
+            velocityX: 0,
+            angle: 0,
+            targetAngle: 0,
+            wingAngle: 0,
+            wingVelocity: 0,
+            isFlapping: false,
+            flapProgress: 0,
+            lastFlapTime: 0
+        };
+        let stars = [];
+        let clouds = [];
+        let score = 0;
+        let maxAltitude = 0;
+        let gameRunning = false;
+        let animationId;
+        let starSpawnCounter = 0;
+        let cloudSpawnCounter = 0;
+        let backgroundOffset = 0;
+        let parallaxOffset = 0;
+        let windSpeed = 0;
+        let windCounter = 0;
+        let touchStartX = null;
+        let leftPressed = false;
+        let rightPressed = false;
+        let particles = [];
+        let sunX = GAME_WIDTH - 120;
+        let sunY = 120;
+        let timeOfDay = 0; // 0-1 representing day cycle
+        
+        // DOM elements
+        let scoreElement, altitudeElement, finalScoreElement, finalAltitudeElement, windSpeedElement;
+        let startScreen, gameOverScreen;
+        let startButton, restartButton;
+        let leftBtn, rightBtn;
+        
+        // Initialize the game
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Get DOM elements
+            scoreElement = document.getElementById('score');
+            altitudeElement = document.getElementById('altitude');
+            finalScoreElement = document.getElementById('finalScore');
+            finalAltitudeElement = document.getElementById('finalAltitude');
+            windSpeedElement = document.getElementById('windSpeed');
+            startScreen = document.getElementById('startScreen');
+            gameOverScreen = document.getElementById('gameOverScreen');
+            startButton = document.getElementById('startButton');
+            restartButton = document.getElementById('restartButton');
+            leftBtn = document.getElementById('leftBtn');
+            rightBtn = document.getElementById('rightBtn');
+            
+            // Event listeners
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', restartGame);
+            
+            // Touch controls
+            leftBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                leftPressed = true;
+            });
+            leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                leftPressed = false;
+            });
+            leftBtn.addEventListener('mousedown', () => leftPressed = true);
+            leftBtn.addEventListener('mouseup', () => leftPressed = false);
+            leftBtn.addEventListener('mouseleave', () => leftPressed = false);
+            
+            rightBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                rightPressed = true;
+            });
+            rightBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                rightPressed = false;
+            });
+            rightBtn.addEventListener('mousedown', () => rightPressed = true);
+            rightBtn.addEventListener('mouseup', () => rightPressed = false);
+            rightBtn.addEventListener('mouseleave', () => rightPressed = false);
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'ArrowLeft' || e.key === 'a') leftPressed = true;
+                if (e.code === 'ArrowRight' || e.key === 'd') rightPressed = true;
+                if ((e.code === 'Space' || e.code === 'ArrowUp') && gameRunning) flapWings();
+            });
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowLeft' || e.key === 'a') leftPressed = false;
+                if (e.code === 'ArrowRight' || e.key === 'd') rightPressed = false;
+            });
+            
+            // Touch flap
+            canvas.addEventListener('touchstart', (e) => {
+                if (gameRunning) {
+                    e.preventDefault();
+                    flapWings();
+                }
+            });
+            
+            // Mouse flap
+            canvas.addEventListener('mousedown', () => {
+                if (gameRunning) {
+                    flapWings();
+                }
+            });
+            
+            // Draw initial screen
+            drawStartScreen();
+        }
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            sunX = canvas.width - 120;
+        }
+        
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Reset game state
+            player = {
+                x: GAME_WIDTH / 4,
+                y: GAME_HEIGHT / 2,
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
+                velocityY: 0,
+                velocityX: 0,
+                angle: 0,
+                targetAngle: 0,
+                wingAngle: 0,
+                wingVelocity: 0,
+                isFlapping: false,
+                flapProgress: 0,
+                lastFlapTime: 0
+            };
+            stars = [];
+            clouds = [];
+            particles = [];
+            score = 0;
+            maxAltitude = 0;
+            scoreElement.textContent = '0';
+            altitudeElement.textContent = '0';
+            gameRunning = true;
+            starSpawnCounter = 0;
+            cloudSpawnCounter = 0;
+            backgroundOffset = 0;
+            parallaxOffset = 0;
+            windSpeed = 0;
+            windCounter = 0;
+            timeOfDay = 0.25; // Start at morning
+            
+            // Start game loop
+            gameLoop();
+        }
+        
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            gameOverScreen.style.display = 'flex';
+            finalScoreElement.textContent = Math.floor(score/10);
+            finalAltitudeElement.textContent = maxAltitude;
+            cancelAnimationFrame(animationId);
+        }
+        
+        function flapWings() {
+            const now = Date.now();
+            if (now - player.lastFlapTime < 200) return; // Flap cooldown
+            
+            player.lastFlapTime = now;
+            player.velocityY += FLAP_STRENGTH;
+            player.wingVelocity = -2;
+            player.isFlapping = true;
+            
+            // Create air particles
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: player.x + player.width * 0.3,
+                    y: player.y + player.height * 0.7,
+                    size: Math.random() * 4 + 2,
+                    opacity: 1,
+                    velocityX: (Math.random() - 0.5) * 3,
+                    velocityY: Math.random() * 2 + 1,
+                    life: 30 + Math.random() * 20
+                });
+            }
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            update();
+            render();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        function update() {
+            // Update time of day (slow cycle)
+            timeOfDay = (timeOfDay + 0.0001) % 1;
+            
+            // Update wind (random changes)
+            windCounter++;
+            if (windCounter > WIND_CHANGE_RATE) {
+                windSpeed = (Math.random() - 0.5) * 2 * MAX_WIND;
+                windCounter = 0;
+            }
+            windSpeedElement.textContent = windSpeed.toFixed(1);
+            
+            // Update player physics
+            const lift = BASE_LIFT * Math.cos(player.wingAngle) * (1 + Math.abs(player.velocityY) * 0.2;
+            player.velocityY += GRAVITY + lift;
+            player.velocityY = Math.max(-15, Math.min(15, player.velocityY)); // Terminal velocity
+            
+            // Apply wind
+            player.velocityX = windSpeed * 0.7;
+            
+            // Horizontal movement
+            if (leftPressed) player.velocityX -= PLAYER_SPEED;
+            if (rightPressed) player.velocityX += PLAYER_SPEED;
+            
+            // Update position
+            player.y += player.velocityY;
+            player.x += player.velocityX;
+            
+            // Wing physics
+            player.wingVelocity += (0 - player.wingAngle) * WING_INERTIA;
+            player.wingAngle += player.wingVelocity;
+            player.wingVelocity *= 0.95; // Damping
+            
+            // Calculate target angle based on velocity
+            player.targetAngle = Math.atan2(player.velocityY, 8) * 0.5;
+            
+            // Smooth angle transition
+            player.angle += (player.targetAngle - player.angle) * 0.1;
+            
+            // Update altitude tracking
+            const currentAltitude = Math.max(0, Math.floor((GAME_HEIGHT - player.y) / 2));
+            altitudeElement.textContent = currentAltitude;
+            if (currentAltitude > maxAltitude) {
+                maxAltitude = currentAltitude;
+            }
+            
+            // Boundary checks
+            if (player.x < -player.width * 0.5) {
+                player.x = GAME_WIDTH - player.width * 0.5;
+                score += 50; // Bonus for looping around
+            } else if (player.x > GAME_WIDTH + player.width * 0.5) {
+                player.x = -player.width * 0.5;
+                score += 50;
+            }
+            
+            // Check if player hit the ground
+            if (player.y >= GAME_HEIGHT - player.height * 0.5) {
+                gameOver();
+                return;
+            }
+            
+            // Check if player flew too high
+            if (player.y <= -player.height) {
+                gameOver();
+                return;
+            }
+            
+            // Spawn stars
+            starSpawnCounter++;
+            if (starSpawnCounter >= STAR_SPAWN_RATE) {
+                spawnStar();
+                starSpawnCounter = 0;
+            }
+            
+            // Spawn clouds
+            cloudSpawnCounter++;
+            if (cloudSpawnCounter >= CLOUD_SPAWN_RATE) {
+                spawnCloud();
+                cloudSpawnCounter = 0;
+            }
+            
+            // Update stars
+            for (let i = stars.length - 1; i >= 0; i--) {
+                stars[i].x -= stars[i].speed;
+                
+                // Check collision with player
+                if (checkCollision(player, stars[i])) {
+                    // Create sparkle effect
+                    for (let j = 0; j < 15; j++) {
+                        particles.push({
+                            x: stars[i].x + stars[i].width/2,
+                            y: stars[i].y + stars[i].height/2,
+                            size: Math.random() * 3 + 2,
+                            opacity: 1,
+                            velocityX: (Math.random() - 0.5) * 4,
+                            velocityY: (Math.random() - 0.5) * 4,
+                            life: 20 + Math.random() * 20,
+                            color: `hsl(${Math.random() * 60 + 30}, 100%, 70%)`
+                        });
+                    }
+                    
+                    stars.splice(i, 1);
+                    score += 10;
+                    scoreElement.textContent = Math.floor(score/10);
+                    continue;
+                }
+                
+                // Remove off-screen stars
+                if (stars[i].x + stars[i].width < 0) {
+                    stars.splice(i, 1);
+                }
+            }
+            
+            // Update clouds
+            for (let i = clouds.length - 1; i >= 0; i--) {
+                clouds[i].x -= clouds[i].speed;
+                
+                // Check collision with player
+                if (checkCollision(player, clouds[i])) {
+                    // Create puff effect
+                    for (let j = 0; j < 20; j++) {
+                        particles.push({
+                            x: player.x + player.width/2,
+                            y: player.y + player.height/2,
+                            size: Math.random() * 5 + 3,
+                            opacity: 1,
+                            velocityX: (Math.random() - 0.5) * 6,
+                            velocityY: (Math.random() - 0.5) * 6,
+                            life: 30 + Math.random() * 30,
+                            color: `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.5})`
+                        });
+                    }
+                    
+                    player.velocityY += 3; // Knock downward
+                    player.velocityX += (Math.random() - 0.5) * 10;
+                    clouds.splice(i, 1);
+                    score = Math.max(0, score - 20);
+                    scoreElement.textContent = Math.floor(score/10);
+                    continue;
+                }
+                
+                // Remove off-screen clouds
+                if (clouds[i].x + clouds[i].width < 0) {
+                    clouds.splice(i, 1);
+                }
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].x += particles[i].velocityX;
+                particles[i].y += particles[i].velocityY;
+                particles[i].life--;
+                particles[i].opacity = particles[i].life / 50;
+                
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // Update parallax background offset
+            backgroundOffset += player.velocityX * 0.1;
+            parallaxOffset += player.velocityX * 0.2;
+            if (backgroundOffset > GAME_WIDTH) backgroundOffset = 0;
+            if (parallaxOffset > GAME_WIDTH) parallaxOffset = 0;
+            
+            // Increment score based on distance traveled
+            score += Math.abs(player.velocityX) * 0.2;
+        }
+        
+        function spawnStar() {
+            stars.push({
+                x: GAME_WIDTH,
+                y: Math.random() * (GAME_HEIGHT * 0.8),
+                width: STAR_SIZE,
+                height: STAR_SIZE,
+                speed: 3 + Math.random() * 2 + Math.max(0, windSpeed),
+                rotation: 0,
+                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+        
+        function spawnCloud() {
+            const cloudHeight = CLOUD_HEIGHT + Math.random() * 40;
+            const cloudType = Math.floor(Math.random() * 3);
+            clouds.push({
+                x: GAME_WIDTH,
+                y: Math.random() * (GAME_HEIGHT - cloudHeight),
+                width: CLOUD_WIDTH + Math.random() * 80,
+                height: cloudHeight,
+                speed: 1 + Math.random() * 2 + Math.max(0, windSpeed * 0.5),
+                type: cloudType,
+                puffiness: Math.random() * 0.5 + 0.5
+            });
+        }
+        
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Draw sky based on time of day
+            drawDynamicSky(timeOfDay);
+            
+            // Draw sun with halo effect
+            drawSun(sunX, sunY, 60, timeOfDay);
+            
+            // Draw distant mountains (parallax)
+            drawMountains(parallaxOffset, GAME_HEIGHT * 0.7, 3, '#5D6D7E', 0.5);
+            
+            // Draw mountains (parallax)
+            drawMountains(backgroundOffset, GAME_HEIGHT * 0.7, 5, '#4A635D', 0.8);
+            
+            // Draw clouds background
+            drawBackgroundClouds(backgroundOffset);
+            
+            // Draw particles
+            for (const particle of particles) {
+                drawParticle(particle);
+            }
+            
+            // Draw stars
+            for (const star of stars) {
+                drawStar(star.x, star.y, star.width, star.rotation, star.twinkle);
+                star.rotation += star.rotationSpeed;
+                star.twinkle += 0.05;
+            }
+            
+            // Draw clouds
+            for (const cloud of clouds) {
+                drawCloud(cloud.x, cloud.y, cloud.width, cloud.height, cloud.type, cloud.puffiness);
+            }
+            
+            // Draw player (bird)
+            drawPlayer(
+                player.x, 
+                player.y, 
+                player.width, 
+                player.angle, 
+                player.wingAngle
+            );
+            
+            // Draw wind indicator
+            if (Math.abs(windSpeed) > 0.3) {
+                drawWindIndicator(windSpeed);
+            }
+        }
+        
+        function drawDynamicSky(time) {
+            // Calculate colors based on time of day
+            let skyColor1, skyColor2, skyColor3;
+            
+            if (time < 0.25) { // Morning
+                const t = time / 0.25;
+                skyColor1 = `rgb(${Math.floor(26 + 100 * t)}, ${Math.floor(42 + 100 * t)}, ${Math.floor(108 + 100 * t)})`;
+                skyColor2 = `rgb(${Math.floor(178 + 77 * t)}, ${Math.floor(60 + 105 * t)}, ${Math.floor(31 + 124 * t)})`;
+                skyColor3 = `rgb(${Math.floor(253 + 2 * t)}, ${Math.floor(187 + 68 * t)}, ${Math.floor(45 + 210 * t)})`;
+            } else if (time < 0.5) { // Day
+                const t = (time - 0.25) / 0.25;
+                skyColor1 = `rgb(${Math.floor(126 - 50 * t)}, ${Math.floor(142 - 42 * t)}, ${Math.floor(208 - 108 * t)})`;
+                skyColor2 = `rgb(${Math.floor(255 - 77 * t)}, ${Math.floor(165 - 65 * t)}, ${Math.floor(155 - 55 * t)})`;
+                skyColor3 = `rgb(${Math.floor(255)}, ${Math.floor(255 - 55 * t)}, ${Math.floor(255 - 155 * t)})`;
+            } else if (time < 0.75) { // Evening
+                const t = (time - 0.5) / 0.25;
+                skyColor1 = `rgb(${Math.floor(76 + 50 * t)}, ${Math.floor(100 + 55 * t)}, ${Math.floor(100 + 55 * t)})`;
+                skyColor2 = `rgb(${Math.floor(178 + 77 * t)}, ${Math.floor(100 + 65 * t)}, ${Math.floor(100 + 55 * t)})`;
+                skyColor3 = `rgb(${Math.floor(255 - 155 * t)}, ${Math.floor(200 - 100 * t)}, ${Math.floor(100)})`;
+            } else { // Night
+                const t = (time - 0.75) / 0.25;
+                skyColor1 = `rgb(${Math.floor(126 - 100 * t)}, ${Math.floor(155 - 113 * t)}, ${Math.floor(155 - 113 * t)})`;
+                skyColor2 = `rgb(${Math.floor(178 - 178 * t)}, ${Math.floor(165 - 165 * t)}, ${Math.floor(155 - 155 * t)})`;
+                skyColor3 = `rgb(${Math.floor(100 + 100 * t)}, ${Math.floor(100 + 100 * t)}, ${Math.floor(100 + 100 * t)})`;
+            }
+            
+            // Draw gradient sky
+            const gradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+            gradient.addColorStop(0, skyColor1);
+            gradient.addColorStop(0.5, skyColor2);
+            gradient.addColorStop(1, skyColor3);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Draw stars at night
+            if (time > 0.7 || time < 0.3) {
+                const starDensity = time > 0.7 ? (time - 0.7) / 0.3 : (0.3 - time) / 0.3;
+                drawStarfield(starDensity);
+            }
+        }
+        
+        function drawStarfield(density) {
+            const count = Math.floor(100 * density);
+            ctx.fillStyle = 'white';
+            
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * GAME_WIDTH;
+                const y = Math.random() * GAME_HEIGHT * 0.7;
+                const size = Math.random() * 1.5 + 0.5;
+                const opacity = Math.random() * 0.8 + 0.2;
+                
+                ctx.globalAlpha = opacity;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+        
+        function drawParticle(p) {
+            ctx.fillStyle = p.color || `rgba(255, 255, 255, ${p.opacity})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * p.opacity, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawMountains(offset, baseY, count, color, scale) {
+            ctx.fillStyle = color;
+            const segmentWidth = GAME_WIDTH / count;
+            
+            for (let i = -1; i < count + 1; i++) {
+                const x = i * segmentWidth - offset % segmentWidth;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, baseY);
+                ctx.lineTo(x + segmentWidth * 0.3, baseY - segmentWidth * 0.3 * scale);
+                ctx.lineTo(x + segmentWidth * 0.5, baseY - segmentWidth * 0.2 * scale);
+                ctx.lineTo(x + segmentWidth * 0.7, baseY - segmentWidth * 0.3 * scale);
+                ctx.lineTo(x + segmentWidth, baseY);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+        
+        function drawBackgroundClouds(offset) {
+            const cloudWidth = 200;
+            const segmentWidth = GAME_WIDTH / 4;
+            
+            for (let i = -1; i < 5; i++) {
+                const x = i * segmentWidth - offset % segmentWidth;
+                const y = GAME_HEIGHT * 0.2 + Math.sin(x * 0.01) * 30;
+                
+                // Large background cloud
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.beginPath();
+                ctx.ellipse(x, y, cloudWidth, cloudWidth * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Small background cloud
+                ctx.beginPath();
+                ctx.ellipse(x + cloudWidth * 0.7, y - cloudWidth * 0.2, cloudWidth * 0.6, cloudWidth * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function drawPlayer(x, y, size, angle, wingAngle) {
+            ctx.save();
+            ctx.translate(x + size * 0.5, y + size * 0.5);
+            ctx.rotate(angle);
+            
+            // Tail
+            ctx.fillStyle = '#FF9800';
+            ctx.beginPath();
+            ctx.moveTo(-size * 0.4, size * 0.1);
+            ctx.quadraticCurveTo(
+                -size * 0.8, size * 0.2,
+                -size * 0.6, size * 0.4
+            );
+            ctx.quadraticCurveTo(
+                -size * 0.4, size * 0.3,
+                -size * 0.4, size * 0.1
+            );
+            ctx.closePath();
+            ctx.fill();
+            
+            // Body
+            ctx.fillStyle = '#FF5722';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, size * 0.4, size * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Head
+            ctx.fillStyle = '#FF9800';
+            ctx.beginPath();
+            ctx.arc(size * 0.2, -size * 0.2, size * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(size * 0.25, -size * 0.25, size * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(size * 0.25, -size * 0.25, size * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Beak
+            ctx.fillStyle = '#FFC107';
+            ctx.beginPath();
+            ctx.moveTo(size * 0.35, -size * 0.2);
+            ctx.lineTo(size * 0.45, -size * 0.15);
+            ctx.lineTo(size * 0.35, -size * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Wings (animated)
+            ctx.fillStyle = '#FF5722';
+            
+            // Left wing
+            ctx.save();
+            ctx.translate(-size * 0.1, 0);
+            ctx.rotate(wingAngle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(
+                -size * 0.5, -size * 0.2,
+                -size * 0.2, -size * 0.8
+            );
+            ctx.quadraticCurveTo(
+                size * 0.1, -size * 0.5,
+                size * 0.1, 0
+            );
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            
+            // Right wing
+            ctx.save();
+            ctx.translate(size * 0.1, 0);
+            ctx.rotate(-wingAngle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(
+                size * 0.5, -size * 0.2,
+                size * 0.2, -size * 0.8
+            );
+            ctx.quadraticCurveTo(
+                -size * 0.1, -size * 0.5,
+                -size * 0.1, 0
+            );
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            
+            ctx.restore();
+        }
+        
+        function drawStar(x, y, size, rotation, twinkle) {
+            ctx.save();
+            ctx.translate(x + size / 2, y + size / 2);
+            ctx.rotate(rotation);
+            
+            const spikes = 5;
+            const outerRadius = size / 2;
+            const innerRadius = size / 4;
+            const twinkleFactor = 0.2 + 0.8 * (0.5 + 0.5 * Math.sin(twinkle));
+            
+            ctx.fillStyle = `rgba(255, 215, 0, ${twinkleFactor})`;
+            ctx.beginPath();
+            
+            for (let i = 0; i < spikes * 2; i++) {
+                const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                const angle = (i * Math.PI / spikes) - Math.PI / 2;
+                const xPos = radius * Math.cos(angle);
+                const yPos = radius * Math.sin(angle);
+                
+                if (i === 0) {
+                    ctx.moveTo(xPos, yPos);
+                } else {
+                    ctx.lineTo(xPos, yPos);
+                }
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add glow effect
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, outerRadius);
+            gradient.addColorStop(0, `rgba(255, 255, 255, ${0.5 * twinkleFactor})`);
+            gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, outerRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawCloud(x, y, width, height, type, puffiness) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.8 + puffiness * 0.2})`;
+            
+            // Different cloud types
+            if (type === 0) {
+                // Cumulus style
+                ctx.beginPath();
+                ctx.ellipse(x + width * 0.3, y + height * 0.5, width * 0.3 * puffiness, height * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(x + width * 0.1, y + height * 0.3, width * 0.2 * puffiness, height * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(x + width * 0.6, y + height * 0.4, width * 0.25 * puffiness, height * 0.45, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(x + width * 0.4, y + height * 0.2, width * 0.25 * puffiness, height * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (type === 1) {
+                // Stratus style
+                ctx.beginPath();
+                ctx.roundRect(x, y + height * 0.3, width, height * 0.5, [height * 0.5]);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(x + width * 0.2, y + height * 0.2, width * 0.3 * puffiness, height * 0.4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(x + width * 0.7, y + height * 0.25, width * 0.25 * puffiness, height * 0.35, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Cirrus style
+                for (let i = 0; i < 3; i++) {
+                    const offset = (i - 1) * width * 0.15;
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        x + width * 0.5 + offset, 
+                        y + height * 0.3 + i * height * 0.2,
+                        width * 0.4 * puffiness, 
+                        height * 0.1,
+                        0, 0, Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            }
+        }
+        
+        function drawSun(x, y, radius, time) {
+            // Adjust sun position based on time of day
+            const sunYPos = y + Math.sin(time * Math.PI * 2) * (GAME_HEIGHT * 0.6 - y);
+            
+            // Sun glow
+            const gradient = ctx.createRadialGradient(x, sunYPos, 0, x, sunYPos, radius * 3);
+            
+            if (time < 0.25 || time > 0.75) {
+                // Morning/evening colors
+                gradient.addColorStop(0, 'rgba(255, 100, 50, 0.8)');
+                gradient.addColorStop(0.5, 'rgba(255, 200, 50, 0.4)');
+                gradient.addColorStop(1, 'rgba(255, 200, 50, 0)');
+            } else {
+                // Daytime colors
+                gradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+                gradient.addColorStop(0.7, 'rgba(255, 255, 100, 0.5)');
+                gradient.addColorStop(1, 'rgba(255, 200, 50, 0)');
+            }
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, sunYPos, radius * 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Sun body
+            if (time < 0.25 || time > 0.75) {
+                ctx.fillStyle = '#FF6B35';
+            } else {
+                ctx.fillStyle = '#FFEB3B';
+            }
+            ctx.beginPath();
+            ctx.arc(x, sunYPos, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Sun rays
+            ctx.strokeStyle = time < 0.25 || time > 0.75 ? 
+                'rgba(255, 150, 50, 0.6)' : 'rgba(255, 235, 59, 0.6)';
+            ctx.lineWidth = 3;
+            
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const startX = x + Math.cos(angle) * radius;
+                const startY = sunYPos + Math.sin(angle) * radius;
+                const endX = x + Math.cos(angle) * (radius * 2.5);
+                const endY = sunYPos + Math.sin(angle) * (radius * 2.5);
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+        }
+        
+        function drawWindIndicator(speed) {
+            const centerX = GAME_WIDTH - 60;
+            const centerY = 60;
+            const maxLength = 40;
+            const lineLength = Math.min(maxLength, Math.abs(speed) * 15);
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'white';
+            
+            // Draw direction line
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            
+            if (speed > 0) {
+                // Wind from left (blowing right)
+                ctx.lineTo(centerX - lineLength, centerY);
+                for (let i = 0; i < 3; i++) {
+                    const x = centerX - lineLength + i * 15;
+                    if (x < centerX) {
+                        ctx.moveTo(x, centerY - 5);
+                        ctx.lineTo(x, centerY + 5);
+                    }
+                }
+            } else {
+                // Wind from right (blowing left)
+                ctx.lineTo(centerX + lineLength, centerY);
+                for (let i = 0; i < 3; i++) {
+                    const x = centerX + lineLength - i * 15;
+                    if (x > centerX) {
+                        ctx.moveTo(x, centerY - 5);
+                        ctx.lineTo(x, centerY + 5);
+                    }
+                }
+            }
+            
+            ctx.stroke();
+            
+            // Draw circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 15, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        
+        function drawStartScreen() {
+            // Draw sky background
+            drawDynamicSky(0.25);
+            
+            // Draw title
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Sky Adventure: Enhanced', GAME_WIDTH / 2, GAME_HEIGHT / 3);
+            
+            // Draw instructions
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Arial';
+            ctx.fillText('Experience realistic bird flight physics!', GAME_WIDTH / 2, GAME_HEIGHT / 2);
+            ctx.fillText('Tap or press Space to flap wings', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40);
+            
+            // Draw sample bird in flight
+            ctx.save();
+            ctx.translate(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80);
+            ctx.rotate(Math.PI / 8);
+            
+            // Body
+            ctx.fillStyle = '#FF5722';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 30, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Head
+            ctx.fillStyle = '#FF9800';
+            ctx.beginPath();
+            ctx.arc(20, -15, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Wings (flapping)
+            const flapAngle = Math.sin(Date.now() / 200) * Math.PI/4;
+            ctx.fillStyle = '#FF5722';
+            
+            // Left wing
+            ctx.save();
+            ctx.translate(-10, 0);
+            ctx.rotate(flapAngle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(-50, -20, -20, -80);
+            ctx.quadraticCurveTo(10, -50, 10, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            
+            // Right wing
+            ctx.save();
+            ctx.translate(10, 0);
+            ctx.rotate(-flapAngle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(50, -20, 20, -80);
+            ctx.quadraticCurveTo(-10, -50, -10, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            
+            ctx.restore();
+        }
+        
+        // Start the game when the page loads
+        window.onload = init;
+    </script>
+</body>
+</html>
